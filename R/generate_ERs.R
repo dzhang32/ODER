@@ -1,26 +1,34 @@
 #' Collapse bigwig files into a mean coverage
 #'
-#' \code{cal_mean_cov} takes as input a set of bws. Then uses the total AUC to normalise coverage per sample and finally collapses the coverage for each sample into a mean coverage.
+#' \code{calc_mean_cov} takes as input a set of bws. Then uses the total AUC to
+#' normalise coverage per sample and finally collapses the coverage for each
+#' sample into a mean coverage.
 #'
 #' @param bw_paths paths to bigwig files.
 #' @param aucs vector containing aucs matching the order of bigwig paths.
-#' @param target_auc total auc to normalise all samples to. E.g. 40e6 * 100 would be the estimated total AUC for sample sequenced to 40 million reads of 100bp in length.
-#' @param chr_to_filter chrs to obtain mean coverage for. Default: chr1-22, chrX, chrY, chrM.
+#' @param target_auc total auc to normalise all samples to. E.g. 40e6 * 100
+#'   would be the estimated total auc for sample sequenced to 40 million reads
+#'   of 100bp in length.
+#' @param chr_to_filter chrs to obtain mean coverage for.
 #'
-#' @return list of Rle objects. Each containing the mean coverage for an entire chromosome.
+#' @return list of Rle objects. Each containing the mean coverage for an entire
+#'   chromosome.
 #'
 #' @export
-cal_mean_cov <- function(bw_paths, aucs, target_auc, chr_to_filter = stringr::str_c("chr", c(1:22, "X", "Y", "M"))){
+calc_mean_cov <- function(bw_paths, aucs, target_auc, chr_to_filter){
 
-  # chrs need to be in UCSC format for bigwig, could be changed to be more flexible
+  # chrs need to be in UCSC format for bigwig
+  # obtain lengths from UCSC for loadCoverage
   chr_info <- GenomeInfoDb::fetchExtendedChromInfoFromUCSC("hg38") %>%
     filter(UCSC_seqlevel %in% chr_to_filter)
 
   all_chrs_mean_cov <- list()
 
+  print(stringr::str_c(Sys.time(), " - Obtaining mean coverage across ", length(bw_paths), " samples"))
+
   for(i in 1:nrow(chr_info)){
 
-    print(stringr::str_c(Sys.time(), " - obtaining mean cov for ", chr_info$UCSC_seqlevel[i]))
+    print(stringr::str_c(Sys.time(), " - ", chr_info$UCSC_seqlevel[i]))
 
     chr_mean_cov <-
       derfinder::loadCoverage(files = bw_paths,
@@ -32,7 +40,7 @@ cal_mean_cov <- function(bw_paths, aucs, target_auc, chr_to_filter = stringr::st
                               returnMean = T,
                               returnCoverage = F,
                               verbose = F,
-                              cutoff = NULL) # setting cutoff as null here and instead will be applied downstream in findRegions()
+                              cutoff = NULL) # setting cutoff as NULLhere and instead to be applied in findRegions()
 
     all_chrs_mean_cov[[chr_info$UCSC_seqlevel[i]]] <- chr_mean_cov$meanCoverage
 
@@ -42,28 +50,30 @@ cal_mean_cov <- function(bw_paths, aucs, target_auc, chr_to_filter = stringr::st
 
 }
 
-#' Generate sets of ERs
+#' Define sets of ERs
 #'
-#' \code{gen_ERs} defines ERs across a inputted range of mean coverage cut-offs (MCCs) and max region gaps (MRGs).
+#' \code{gen_ERs} defines ERs across a inputted range of mean coverage cut-offs
+#' (MCCs) and max region gaps (MRGs).
 #'
-#' @param chr_mean_cov output of \code{cal_mean_cov}.
-#' @param MCCs cut-offs to apply.
+#' @param chrs_mean_cov output of \code{\link{cal_mean_cov}}.
+#' @param MCCs mean coverage cut-offs to apply.
 #' @param MRGs max region gaps to apply.
 #'
-#' @return list containing sets of ERs, each generated using a particular combination of MCC and MRG.
+#' @return list containing sets of ERs, each generated using a particular
+#'   combination of MCC and MRG.
 #'
 #' @export
-def_ERs <- function(chr_mean_cov, MCCs, MRGs){
+gen_ERs <- function(chrs_mean_cov, MCCs, MRGs){
 
   ##### Create list to save ERs #####
 
   ERs_MCCs_MRGs <- list()
 
-  for(j in seq_along(MCCs)){
+  for(j in 1:length(MCCs)){
 
     MCC_label <- stringr::str_c("MCC_", MCCs[j])
 
-    for(k in seq_along(MRGs)){
+    for(k in 1:length(MRGs)){
 
       MRG_label <- stringr::str_c("MRG_", MRGs[k])
 
@@ -76,27 +86,28 @@ def_ERs <- function(chr_mean_cov, MCCs, MRGs){
 
   for(i in 1:length(chrs_mean_cov)){
 
-    for(j in seq_along(MCCs)){
+    print(stringr::str_c(Sys.time(), " - Generating ERs for ", names(chrs_mean_cov)[i]))
+
+    for(j in 1:length(MCCs)){
 
       MCC_label <- stringr::str_c("MCC_", MCCs[j])
 
       # generate ERs at particular MCC
       suppressMessages(
-        ERs_MCC <-derfinder::findRegions(position = Rle(TRUE, length(chrs_mean_cov[[i]])),
-                                         fstats = chrs_mean_cov[[i]],
-                                         chr = names(chrs_mean_cov)[i],
-                                         cutoff = MCCs[j],
-                                         maxRegionGap = 0L,
-                                         maxClusterGap = length(chrs_mean_cov[[i]]), # setting this to chr length (ignore clusters) to reduce run time. No impact on ERs
-                                         verbose = T)
+        ERs_MCC <- derfinder::findRegions(position = S4Vectors::Rle(TRUE, length(chrs_mean_cov[[i]])),
+                                          fstats = chrs_mean_cov[[i]],
+                                          chr = names(chrs_mean_cov)[i],
+                                          cutoff = MCCs[j],
+                                          maxRegionGap = 0L,
+                                          maxClusterGap = length(chrs_mean_cov[[i]]), # setting this to chr length (ignore clusters) to reduce run time. No impact on ERs
+                                          verbose = F)
       )
 
-      for(k in seq_along(MRGs)){
+      for(k in 1:length(MRGs)){
 
         MRG_label <- stringr::str_c("MRG_", MRGs[k])
 
-        print(stringr::str_c(Sys.time(), " - Generating ERs for ", names(chrs_mean_cov)[i], " - MCC:", MCCs[j], ", MRG:", MRGs[k]))
-
+        # collapse ERs with less than a MRG apart
         ERs_MCCs_MRGs[[MCC_label]][[MRG_label]][[names(chrs_mean_cov)[i]]] <- ERs_MCC %>%
           GenomicRanges::reduce(min.gapwidth = MRGs[k])
 
@@ -106,16 +117,16 @@ def_ERs <- function(chr_mean_cov, MCCs, MRGs){
 
   ##### Merge ERs across chromosomes #####
 
-  for(j in seq_along(MCCs)){
+  for(j in 1:length(MCCs)){
 
     MCC_label <- stringr::str_c("MCC_", MCCs[j])
 
-    for(k in seq_along(MRGs)){
+    for(k in 1:length(MRGs)){
 
       MRG_label <- stringr::str_c("MRG_", MRGs[k])
 
       ERs_MCCs_MRGs[[MCC_label]][[MRG_label]] <-
-        ERs_MCC_MRGs[[MCC_label]][[MRG_label]] %>%
+        ERs_MCCs_MRGs[[MCC_label]][[MRG_label]] %>%
         GenomicRanges::GRangesList() %>%
         unlist() %>%
         sort()
@@ -124,18 +135,5 @@ def_ERs <- function(chr_mean_cov, MCCs, MRGs){
   }
 
   return(ERs_MCCs_MRGs)
-
-}
-
-optimise_ERs <- function(ERs_MCCs_MRGs, gr){
-
-
-
-}
-
-get_no_overlap_exons <- function(gtf_path){
-
-  gtf_path <- "/data/re"
-
 
 }

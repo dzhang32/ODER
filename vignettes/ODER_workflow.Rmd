@@ -1,0 +1,153 @@
+---
+title: "Optimising the Definition of Expressed Regions"
+author:
+  name: David Zhang
+output: 
+  html_document:
+    code_folding: show
+    theme: spacelab
+    highlight: kate
+    df_print: paged
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{ODER_workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+
+library(tidyverse)
+# devtools::load_all("~/Dropbox/DZ_Work/UCL/RA_PhD_2017/packages/ODER/")
+#library(ODER)
+
+```
+
+- For this example, we will use the GTEx v6 data made available through the [recount2](https://jhubiostatistics.shinyapps.io/recount/) project
+
+# Download data
+
+- We require a bigWig file and total AUC for each sample. Both of which can be obtained through the `recount` R package.
+- For speed this workflow only demonstrates this run on 2 cerebellar samples. Though it would be advisable to use the bigwigs from as many samples as you have to gain a more accurate estimate of mean coverage. 
+
+```{r}
+
+gtex_metadata <- recount::all_metadata('gtex') 
+
+gtex_metadata <- gtex_metadata %>% 
+  as.data.frame() %>% 
+  dplyr::filter(smtsd == "Brain - Cerebellar Hemisphere", 
+                smafrze == "USE ME") %>% 
+  .[1:2, ]
+
+# for(i in seq_along(gtex_metadata$bigwig_file)){
+# 
+#   download.file(url = str_c("http://duffel.rail.bio/recount/SRP012682/bw/", gtex_metadata$bigwig_file[i]),
+#                 destfile = str_c("~/data/", gtex_metadata$bigwig_file[i]),
+#                 method = "wget", 
+#                 quiet = T)
+# 
+# }
+
+```
+
+# Quick start
+
+```{r}
+
+opt_ERs <- 
+  ODER(bw_paths = stringr::str_c("~/data/", gtex_metadata$bigwig_file), 
+       aucs = gtex_metadata$auc,
+       chr_to_filter = stringr::str_c("chr", 21:22),
+       target_auc = (40e6 * 100), # target 40 million reads with 100 bp length
+       MCCs = c(5, 10), 
+       MRGs = c(10, 20), 
+       gtf = "~/data/Homo_sapiens.GRCh38.95.gtf", 
+       add_chr = T)
+
+opt_ERs
+
+```
+
+# Generate ERs 
+
+## Calculate mean coverage across your samples
+
+- In order to apply a mean coverage cut off to define ERs, we must first collapse the information from bws across samples into a mean coverage. 
+- To account for differences in library size, we normalise all bws to a target AUC. 
+
+```{r}
+
+chrs_mean_cov <-
+  calc_mean_cov(bw_paths = str_c("~/data/", gtex_metadata$bigwig_file),
+                aucs = gtex_metadata$auc,
+                target_auc = (40e6 * 100), # target 40 million coverage with 100 bp length reads
+                chr_to_filter = c("chr21", "chr22")) # defaults to chr1-22, chrX, chrY, chrM
+
+chrs_mean_cov
+
+```
+
+## different MCCs and MRGs
+
+```{r}
+
+ERs_MCCs_MRGs <- gen_ERs(chrs_mean_cov, 
+                         MCCs = c(5, 10), 
+                         MRGs = c(10, 20))
+
+ERs_MCCs_MRGs$MCC_5$MRG_10
+
+```
+
+# Optimising ER definitions
+
+## Get non-overlapping exons
+
+```{r}
+
+exons_no_overlap_gr <- get_no_overlap_exons(gtf_path = "~/data/Homo_sapiens.GRCh38.95.gtf")
+
+# change chromosomes to match bw
+GenomeInfoDb::seqlevels(exons_no_overlap_gr) <- ifelse(GenomeInfoDb::seqlevels(exons_no_overlap_gr) == "MT", 
+                                                       "chrM", 
+                                                       str_c("chr", GenomeInfoDb::seqlevels(exons_no_overlap_gr)))
+
+exons_no_overlap_gr <- exons_no_overlap_gr %>% 
+  GenomeInfoDb::keepSeqlevels(stringr::str_c("chr", c(1:22, "X", "Y", "M")), pruning.mode = "coarse")
+
+head(exons_no_overlap_gr)
+
+```
+
+## Calculate delta between ERs and exons
+
+```{r}
+
+delta_df <- calc_ERs_delta(ERs_MCCs_MRGs, 
+                           opt_gr = exons_no_overlap_gr)
+
+```
+
+## Select optimal ERs
+
+```{r}
+
+opt_ERs <- get_opt_ERs(ERs_MCCs_MRGs, delta_df)
+
+opt_ERs
+
+```
+
+## Plot delta 
+
+

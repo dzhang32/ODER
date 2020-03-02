@@ -1,13 +1,25 @@
 Package: ODER
-Title: What the Package Does (One Line, Title Case)
+Title: Optimising the Definition of Expressed Regions
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "David",
+           family = "Zhang",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+           email = "david.zhang.12@ucl.ac.uk")
 Description: What the package does (one paragraph).
 License: What license it uses
 Encoding: UTF-8
 LazyData: true
+Imports: 
+    GenomeInfoDb,
+    derfinder,
+    stringr,
+    S4Vectors,
+    GenomicRanges,
+    dplyr
+Suggests: 
+    knitr,
+    rmarkdown,
+    recount
+VignetteBuilder: knitr
+RoxygenNote: 7.0.0
