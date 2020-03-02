@@ -12,7 +12,8 @@ ODER(
   MCCs,
   MRGs,
   gtf = NULL,
-  add_chr,
+  ucsc_chr,
+  ignore.strand,
   opt_gr = NULL
 )
 }
@@ -22,7 +23,7 @@ ODER(
 \item{aucs}{vector containing aucs matching the order of bigwig paths.}
 
 \item{target_auc}{total auc to normalise all samples to. E.g. 40e6 * 100
-would be the estimated total AUC for sample sequenced to 40 million reads
+would be the estimated total auc for sample sequenced to 40 million reads
 of 100bp in length.}
 
 \item{chr_to_filter}{chrs to obtain mean coverage for.}
@@ -34,9 +35,12 @@ of 100bp in length.}
 \item{gtf}{Either a string if path to a .gtf file or a pre-imported gtf using
 \code{\link[rtracklayer]{import}}.}
 
-\item{add_chr}{logical scalar, determining whether to add "chr" prefix
-seqnames of non-overlapping exons. Note, if TRUE, and seqnames already have
-"chr" it will not add another.}
+\item{ucsc_chr}{logical scalar, determining whether to add "chr" prefix to the
+seqnames of non-overlapping exons and change "chrMT" -> "chrM". Note, if
+set to TRUE and seqnames already have "chr", it will not add another.}
+
+\item{ignore.strand}{logical value for input into
+\code{\link[GenomicRanges]{findOverlaps}}.}
 
 \item{opt_gr}{GRanges object that contains the regions that ideally, you want
 to the ER definitions to match}
@@ -46,12 +50,9 @@ list containing optimised ERs, optimal pair of MCC/MRGs and
   \code{delta_df}
 }
 \description{
-\code{ODER} is a wrapper function that runs the entire pipeline from generation of ERs
+\code{ODER} is a wrapper function that runs the pipeline from generation of ERs
 across different MCCs/MRGs to selecting the optimal set of ERs. Either a gtf
 is required, to optain a set of non-overlapping exons to use as the
 \code{opt_gr} OR users can provide their own set of ranges to optimise ER
-definitions towards using \code{opt_gr}.
-}
-\seealso{
-
+definitions towards.
 }

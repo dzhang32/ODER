@@ -6,13 +6,15 @@
 #'
 #'@param gtf Either a string if path to a .gtf file or a pre-imported gtf using
 #'  \code{\link[rtracklayer]{import}}.
-#'@param add_chr logical scalar, determining whether to add "chr" prefix to the
-#'  seqnames of non-overlapping exons. Note, if set to TRUE and seqnames already
-#'  have "chr", it will not add another.
+#'@param ucsc_chr logical scalar, determining whether to add "chr" prefix to the
+#'  seqnames of non-overlapping exons and change "chrMT" -> "chrM". Note, if
+#'  set to TRUE and seqnames already have "chr", it will not add another.
+#'@param ignore.strand logical value for input into
+#'  \code{\link[GenomicRanges]{findOverlaps}}.
 #'
 #'@return GRanges object containing non-overlapping exons.
 #'@export
-get_no_overlap_exons <- function(gtf, add_chr){
+get_no_overlap_exons <- function(gtf, ucsc_chr, ignore.strand){
 
   if(is.character(gtf)){
 
@@ -29,9 +31,11 @@ get_no_overlap_exons <- function(gtf, add_chr){
   print(str_c(Sys.time(), " - Obtaining non-overlapping exons"))
 
   exons_gr <- gtf_gr[gtf_gr$type == "exon"]
-  exons_gr <- exons_gr[!duplicated(exons_gr$exon_id)] %>% unique()
+  exons_gr <- exons_gr[!duplicated(exons_gr$exon_id)]
 
-  exons_hits <- GenomicRanges::findOverlaps(exons_gr, drop.self = T)
+  exons_hits <- GenomicRanges::findOverlaps(exons_gr,
+                                            drop.self = T,
+                                            ignore.strand = ignore.strand)
 
   # all(S4Vectors::queryHits(gtf_gr_exons_hits) %in% S4Vectors::subjectHits(gtf_gr_exons_hits))
 
@@ -40,12 +44,13 @@ get_no_overlap_exons <- function(gtf, add_chr){
   # check - no overlaps
   # GenomicRanges::findOverlaps(exons_no_overlap_gr, drop.self = T)
 
-  if(add_chr){
+  if(ucsc_chr){
 
     GenomeInfoDb::seqlevels(exons_no_overlap_gr) <-
       GenomeInfoDb::seqlevels(exons_no_overlap_gr) %>%
       stringr::str_replace("chr", "") %>%
-      stringr::str_c("chr", .)
+      stringr::str_c("chr", .) %>%
+      stringr::str_replace("chrMT", "chrM")
 
   }
 

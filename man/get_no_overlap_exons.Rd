@@ -4,18 +4,21 @@
 \alias{get_no_overlap_exons}
 \title{Optain set of non-overlapping exons}
 \usage{
-get_no_overlap_exons(gtf, add_chr)
+get_no_overlap_exons(gtf, ucsc_chr, ignore.strand)
 }
 \arguments{
 \item{gtf}{Either a string if path to a .gtf file or a pre-imported gtf using
 \code{\link[rtracklayer]{import}}.}
 
-\item{add_chr}{logical scalar, determining whether to add "chr" prefix
-seqnames of non-overlapping exons. Note, if TRUE, and seqnames already have
-"chr" it will not add another.}
+\item{ucsc_chr}{logical scalar, determining whether to add "chr" prefix to the
+seqnames of non-overlapping exons and change "chrMT" -> "chrM". Note, if
+set to TRUE and seqnames already have "chr", it will not add another.}
+
+\item{ignore.strand}{logical value for input into
+\code{\link[GenomicRanges]{findOverlaps}}.}
 }
 \value{
-GRanges object containing non-overlapping exons. s
+GRanges object containing non-overlapping exons.
 }
 \description{
 \code{get_no_overlap_exons} uses as input a gtf to optain set of

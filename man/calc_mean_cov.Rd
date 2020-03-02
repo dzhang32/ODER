@@ -12,7 +12,7 @@ calc_mean_cov(bw_paths, aucs, target_auc, chr_to_filter)
 \item{aucs}{vector containing aucs matching the order of bigwig paths.}
 
 \item{target_auc}{total auc to normalise all samples to. E.g. 40e6 * 100
-would be the estimated total AUC for sample sequenced to 40 million reads
+would be the estimated total auc for sample sequenced to 40 million reads
 of 100bp in length.}
 
 \item{chr_to_filter}{chrs to obtain mean coverage for.}

@@ -18,7 +18,7 @@
 #' @export
 ODER <- function(bw_paths, aucs, target_auc, chr_to_filter = stringr::str_c("chr", c(1:22, "X", "Y", "M")),
                  MCCs, MRGs,
-                 gtf = NULL, add_chr,
+                 gtf = NULL, ucsc_chr, ignore.strand,
                  opt_gr = NULL){
 
   if(is.null(gtf) && is.null(opt_gr)) stop("One of gtf OR opt_gr must be provided.")
@@ -30,7 +30,7 @@ ODER <- function(bw_paths, aucs, target_auc, chr_to_filter = stringr::str_c("chr
 
   if(!is.null(gtf)){
 
-    opt_gr <- get_no_overlap_exons(gtf, add_chr)
+    opt_gr <- get_no_overlap_exons(gtf, ucsc_chr, ignore.strand)
 
   }
 
